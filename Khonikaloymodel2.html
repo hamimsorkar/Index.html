@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KHONIKALOY - দৈনিক হিসাব</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 20px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+        }
+        .ledger-container {
+            max-width: 700px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            margin: 10px 0;
+            padding: 8px;
+            width: 95%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .balance-box {
+            font-size: 18px;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .delete-btn {
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>KHONIKALOY - দৈনিক হিসাব</h1>
+    <div class="ledger-container">
+        <h3>নতুন এন্ট্রি যোগ করুন</h3>
+        <input type="text" id="description" placeholder="বিবরণ লিখুন (যেমন: বিক্রয়, ব্যয়)" oninput="saveDraft()">
+        <input type="number" id="amount" placeholder="পরিমাণ (৳)" oninput="saveDraft()">
+        <select id="category" onchange="saveDraft()">
+            <option value="income">আয় (Income)</option>
+            <option value="expense">ব্যয় (Expense)</option>
+        </select>
+        <button onclick="addEntry()">এন্ট্রি যোগ করুন</button>
+
+        <div class="balance-box">
+            মোট ব্যালেন্স: <strong>৳<span id="total-balance">0</span></strong>
+        </div>
+
+        <h3>হিসাবের তালিকা</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ক্রমিক নং</th>
+                    <th>বিবরণ</th>
+                    <th>পরিমাণ (৳)</th>
+                    <th>বিভাগ</th>
+                    <th>তারিখ</th>
+                    <th>মুছুন</th>
+                </tr>
+            </thead>
+            <tbody id="ledger-table">
+                <!-- Entries will be added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let count = 1;
+        let totalBalance = 0;
+        let ledgerData = JSON.parse(localStorage.getItem("ledgerData")) || [];
+
+        function saveDraft() {
+            const draft = {
+                description: document.getElementById("description").value,
+                amount: document.getElementById("amount").value,
+                category: document.getElementById("category").value
+            };
+            localStorage.setItem("draftEntry", JSON.stringify(draft));
+        }
+
+        function loadDraft() {
+            const draft = JSON.parse(localStorage.getItem("draftEntry"));
+            if (draft) {
+                document.getElementById("description").value = draft.description || "";
+                document.getElementById("amount").value = draft.amount || "";
+                document.getElementById("category").value = draft.category || "income";
+            }
+        }
+
+        function updateBalance() {
+            totalBalance = ledgerData.reduce((sum, item) => {
+                return item.category === "income" ? sum + item.amount : sum - item.amount;
+            }, 0);
+            document.getElementById("total-balance").textContent = totalBalance;
+        }
+
+        function loadLedger() {
+            const table = document.getElementById("ledger-table");
+            table.innerHTML = "";
+            count = 1;
+            ledgerData.forEach((entry, index) => {
+                const row = table.insertRow();
+                row.insertCell(0).textContent = count++;
+                row.insertCell(1).textContent = entry.description;
+                row.insertCell(2).textContent = "৳" + entry.amount;
+                row.insertCell(3).textContent = entry.category === "income" ? "আয়" : "ব্যয়";
+                row.insertCell(4).textContent = entry.date;
+
+                const deleteCell = row.insertCell(5);
+                const deleteButton = document.createElement("button");
+                deleteButton.textContent = "X";
+                deleteButton.className = "delete-btn";
+                deleteButton.onclick = () => deleteEntry(index);
+                deleteCell.appendChild(deleteButton);
+            });
+            updateBalance();
+        }
+
+        function addEntry() {
+            const description = document.getElementById("description").value.trim();
+            const amount = parseFloat(document.getElementById("amount").value);
+            const category = document.getElementById("category").value;
+            const date = new Date().toLocaleDateString("bn-BD");
+
+            if (description && amount > 0) {
+                ledgerData.push({ description, amount, category, date });
+                localStorage.setItem("ledgerData", JSON.stringify(ledgerData));
+                localStorage.removeItem("draftEntry");
+                loadLedger();
+
+                document.getElementById("description").value = "";
+                document.getElementById("amount").value = "";
+            } else {
+                alert("অনুগ্রহ করে সঠিক বিবরণ ও পরিমাণ লিখুন!");
+            }
+        }
+
+        function deleteEntry(index) {
+            if (confirm("আপনি কি এই এন্ট্রি মুছতে চান?")) {
+                ledgerData.splice(index, 1);
+                localStorage.setItem("ledgerData", JSON.stringify(ledgerData));
+                loadLedger();
+            }
+        }
+
+        // Load stored data and drafts on page load
+        loadLedger();
+        loadDraft();
+    </script>
+
+</body>
+</html>
